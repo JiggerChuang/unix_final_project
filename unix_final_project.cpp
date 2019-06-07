@@ -17,7 +17,7 @@ const int dataSize = 50; // dataSize is size of struction named Data
 const int tempSize = 100; // tempSize is size of input file
 
 // Data is to hole data to be passed to a thread
-struct Data
+struct Data // 1041542 莊集 start
 {
     pthread_t tid; // thread id
     string id; // document id
@@ -101,10 +101,10 @@ int main(int argc, char *argv[]){
              data[i].size++;
              temp_char = strtok(NULL, " ");
          }
-    }
+    } // 1041542 莊集 end
 
     // close file
-    infile.close();
+    infile.close(); // 1041439 蔡侑霖 start
 	
 	
 	for (int i = 0; i < storeIndex / 2; i++)
@@ -208,4 +208,68 @@ int main(int argc, char *argv[]){
     cout << "[Main thread] CPU time:" << duration << "ms" << endl;
 	
 	return 0;
-}
+} // 1041439 蔡侑霖 end
+
+void *jaccard_function(void *ptr) //1051439 陳威元 start
+{
+	clock_t start; // start time
+	long double duration;
+	start = clock();
+
+	// receive data from parent thread
+	Data *jaccard_data = (Data *)ptr;
+
+	// get self thread id
+	pthread_t tid = pthread_self();
+
+	for (unsigned int i = jaccard_data->data_id; i < share_data.size(); i++)
+	{
+		int same = 0;
+		for (int j = 0; j < jaccard_data->str.size(); j++)
+		{
+			for (int k = 0; k < share_data[i + 1].str.size(); k++)
+			{
+				if (jaccard_data->str[j] == share_data[i + 1].str[k])
+					same++;
+			}
+
+		}
+		int total = jaccard_data->count + share_data[i + 1].count - same;
+
+		jaccard_data->coefficient[jaccard_data->double_index] = (double)same / total;
+		share_data[i + 1].coefficient[jaccard_data->data_id] = jaccard_data->coefficient[jaccard_data->double_index];
+
+		jaccard_data->double_index++;
+		share_data[i + 1].double_index++;
+	}
+
+	double temp_sum = 0.0;
+	for (int i = 0; i < jaccard_data->double_index - 1; i++)
+		temp_sum += jaccard_data->coefficient[i];
+
+	// calculate the average of coefficient
+	jaccard_data->average = temp_sum / (jaccard_data->double_index - 1);
+
+	cout << "[TID=" << tid << "] DocID:" << (jaccard_data)->id << endl;
+
+	int temp_index = 0;
+	for (int i = 0; i < jaccard_data->vec_size; i++)
+	{
+		if (i == jaccard_data->data_id)
+			continue;
+		cout << "[TID=" << tid << "] J(" << jaccard_data->id << "," << share_data[i].id
+			<< ")=" << jaccard_data->coefficient[temp_index] << endl;
+		temp_index++;
+	}
+
+	duration = ((double)(clock() - start)) / CLOCKS_PER_SEC;
+	duration *= 1000000;
+
+	// print average
+	cout << "[TID=" << tid << "] AvgJ:" << jaccard_data->average << endl;
+
+	// print cpu time
+	cout << "[TID=" << tid << "] CPU time:" << duration << "ms" << endl;
+
+	pthread_exit(0);
+}// 1051439 陳威元 end
