@@ -107,5 +107,105 @@ int main(int argc, char *argv[]){
     infile.close();
 	
 	
+	for (int i = 0; i < storeIndex / 2; i++)
+    {
+        for(int j = 0; j < data[i].size; j++)
+        {
+            data[i].str.push_back(data[i].str_array[j]);
+        }
+    }
+
+    // push data into vector
+    for (int i = 0; i < storeIndex / 2; i++)
+        share_data.push_back(data[i]);
+    
+    // delete the same word in str_array and adjust size of str_array
+    for (unsigned int i = 0; i < share_data.size(); i++)
+    {   
+        vector< string >::reverse_iterator it = share_data[i].str.rbegin();
+        for(int j = 0; j < share_data[i].size; j++)
+        {
+            vector< string >::reverse_iterator it1 = share_data[i].str.rbegin();
+            it1 = it1 + share_data[i].str.size() - 2 - j;
+            it = it1;
+            for(int k = j+1; k < share_data[i].str.size(); k++)
+            {
+                if (share_data[i].str[j] == share_data[i].str[k])
+                { 
+                    vector< string >::iterator temp_it = it.base();
+                    --temp_it;
+                    share_data[i].str.erase(temp_it);
+
+                }
+                --it;
+            }
+        }
+    }
+    
+    // set number of word in str
+    for (int i = 0; i < storeIndex / 2; i++)
+    {
+        share_data[i].count = share_data[i].str.size();
+        share_data[i].vec_size = share_data.size();
+    }
+    
+    // create number of thread
+    for(int i = 0; i < storeIndex / 2; i++)
+    {
+        // create thread for each data
+        int check = pthread_create (&data[i].tid, NULL,
+                jaccard_function, (void *)&share_data[i]);
+
+        // check thread create success or fail
+        if (check != 0)
+        {
+            cout << "\n\nThread create error!\n\n";
+            exit(-1);
+        }
+        cout << "[Main thread]:create TID:" << data[i].tid
+             << ",DocID:" << data[i].id << endl;
+        sleep(1);
+    }
+    
+    // join to terminated thread
+    for(int i = 0; i < storeIndex/2; i++)
+    {
+        int check = pthread_join(data[i].tid, NULL);
+        if (check != 0)
+        {
+            cout << "\n\nThread join error!\n\n";
+            exit(-1);
+        }
+    }
+
+    double max = share_data[0].average;
+    string max_id = share_data[0].id;
+    for (int i = 1; i < share_data.size(); i++)
+    {
+        if (share_data[i].average > max)
+        {
+            max_id = share_data[i].id;
+            max = share_data[i].average;
+        }
+    }
+
+    cout << "[Main thread] KeyDocID:" << max_id << " HighestJ:" << max << endl;
+    
+    for (int i = 0; i < share_data.size(); i++)
+    {
+        if(share_data[i].id == max_id)
+            continue;
+        if(share_data[i].average == max)
+        {
+            cout << "[Main thread] KeyDocID:" << share_data[i].id 
+                 << " HighestJ:" << share_data[i].average << endl;
+        }
+    }
+
+    duration = ((double)(clock() - start)) / CLOCKS_PER_SEC;
+    duration *= 1000000;
+
+    cout << "[Main thread] CPU time:" << duration << "ms" << endl;
+	
 	return 0;
 }
